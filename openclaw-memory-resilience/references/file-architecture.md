@@ -17,7 +17,7 @@ workspace/
 ├── HEARTBEAT.md  — What to check on each heartbeat poll
 └── memory/
     ├── YYYY-MM-DD.md   — Daily raw logs (one per day)
-    └── archive/        — Older daily notes (still searchable via QMD)
+    └── archive/        — Older daily notes (still searchable)
 ```
 
 ## MEMORY.md vs Daily Notes
@@ -38,7 +38,7 @@ mv workspace/memory/2026-01-*.md workspace/memory/archive/
 mv workspace/memory/2026-02-*.md workspace/memory/archive/
 ```
 
-**Important:** QMD uses pattern `**/*.md` which covers subdirectories. Archived files remain fully searchable via `memory_search` — they just don't bloat bootstrap context.
+Archived files remain fully searchable via `memory_search` — they just don't bloat bootstrap context.
 
 Keep the most recent 5-7 daily notes in `memory/` directly. Archive the rest.
 
@@ -62,9 +62,13 @@ If files are being truncated, either reduce the file or raise the limit:
 }
 ```
 
-## Memory Search Setup
+## Retrieval Backend Options
 
-QMD (the vector+keyword retrieval backend) must be configured to index memory files:
+The file architecture works with any OpenClaw retrieval backend. Two tiers:
+
+### Level 1: QMD (built-in, zero infrastructure)
+
+QMD is OpenClaw's built-in hybrid BM25 + vector search. Single embedded binary, no external services required. Good for single-agent setups.
 
 ```json
 {
@@ -81,12 +85,22 @@ QMD (the vector+keyword retrieval backend) must be configured to index memory fi
 }
 ```
 
-With `includeDefaultMemory: true` and `**/*.md` patterns, QMD indexes both `memory/` and `memory/archive/` automatically.
-
 Force a re-index after adding/moving files:
 ```bash
 qmd update && qmd embed
 ```
+
+### Level 2: Qdrant + Mem0 (production multi-agent)
+
+For multi-agent deployments needing agent-scoped memory, concurrent writes, and cross-session recall. Requires external services: Qdrant vector store + Mem0 OSS + embedding model + small reasoning model.
+
+See the [openclaw-memory-stack-qdrant](../openclaw-memory-stack-qdrant/) skill for the full setup guide.
+
+**When to upgrade from QMD to Qdrant+Mem0:**
+- Running 3+ agents concurrently (QMD has no concurrent write support)
+- Need agent-scoped memory isolation (Mem0 handles this natively)
+- QMD's embedded binary breaks after OS or Node.js version changes
+- Want cross-session fact extraction and relationship tracking
 
 ## Manual Memory Discipline
 
